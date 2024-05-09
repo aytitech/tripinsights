@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tripviewer-deployment
+  namespace: web
+  labels:
+    deploy: tripviewer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tripviewer
+  template:
+    metadata:
+      labels:
+        app: tripviewer
+    spec:
+      containers:
+      - image: ozgursunexpress.azurecr.io/tripinsights/tripviewer:1.0
+        imagePullPolicy: Always
+        name: tripviewer
+        ports:
+          - containerPort: 80
+            name: http
+            protocol: TCP
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.2"
+            memory: "128Mi"
+        env:
+          - name: TRIPS_API_ENDPOINT
+            value : http://trips.api.svc.cluster.local
+          - name: USERPROFILE_API_ENDPOINT
+            value : http://userprofile.api.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tripviewer
+  namespace: web
+spec:
+  type: ClusterIP
+  selector:
+    app: tripviewer
+  ports:
+    - protocol: TCP
+      name: tripviewer-http
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+  name: webingress
+  namespace: web
+spec:
+  ingressClassName: webapprouting.kubernetes.azure.com
+  rules:
+  - host: sunexpress.ayti.tech
+    http:
+      paths:
+      - backend:
+          service:
+            name: tripviewer
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
